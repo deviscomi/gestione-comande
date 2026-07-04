@@ -38,11 +38,16 @@ use Illuminate\Support\Facades\Route;
 // ── Health check (pubblico) ───────────────────────────────────────────────
 Route::get('v1/health', fn () => response()->json(['status' => 'ok']));
 
-// ── KDS — Kitchen Display System (PUBBLICO: display cucina/pizzeria senza login) ──
+// ── KDS — Kitchen Display System (display cucina/pizzeria/bar senza login) ──
+// Auth leggera (kds.auth): token condiviso o rete LAN fidata. Lettura (queue) e
+// scrittura (statuses/call) hanno scope separati.
 Route::prefix('v1/kds')->group(function () {
-    Route::get('queue',                       [KdsController::class, 'queue']);
-    Route::patch('statuses/{kdsStatus}',      [KdsController::class, 'updateStatus']);
-    Route::patch('statuses/{kdsStatus}/call', [KdsController::class, 'call']);
+    Route::get('queue', [KdsController::class, 'queue'])->middleware('kds.auth:read');
+
+    Route::middleware('kds.auth:write')->group(function () {
+        Route::patch('statuses/{kdsStatus}',      [KdsController::class, 'updateStatus']);
+        Route::patch('statuses/{kdsStatus}/call', [KdsController::class, 'call']);
+    });
 });
 
 Route::prefix('v1')->group(function () {

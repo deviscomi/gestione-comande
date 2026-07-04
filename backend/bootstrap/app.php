@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CheckKdsAccess;
 use App\Http\Middleware\CheckModule;
 use App\Http\Middleware\CheckRole;
 use Illuminate\Foundation\Application;
@@ -16,8 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
-            'role'   => CheckRole::class,
-            'module' => CheckModule::class,
+            'role'     => CheckRole::class,
+            'module'   => CheckModule::class,
+            'kds.auth' => CheckKdsAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
