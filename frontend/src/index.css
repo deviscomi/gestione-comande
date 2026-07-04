@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Light mode ─────────────────────────────────────────────────────────── */
+:root {
+  /* Background */
+  --color-background-primary:   #ffffff;
+  --color-background-secondary: #f4f5f7;
+  --color-background-info:      #e8f0fe;
+  --color-background-danger:    #fde8e8;
+  --color-background-warning:   #fef3e2;
+  --color-background-success:   #e6f4ea;
+
+  /* Text */
+  --color-text-primary:   #111827;
+  --color-text-secondary: #6b7280;
+  --color-text-tertiary:  #9ca3af;
+  --color-text-info:      #1a56a0;
+  --color-text-danger:    #dc2626;
+  --color-text-warning:   #d97706;
+  --color-text-success:   #16a34a;
+
+  /* Borders */
+  --color-border-primary:   #111827;
+  --color-border-secondary: #d1d5db;
+  --color-border-tertiary:  #e5e7eb;
+  --color-border-info:      #93c5fd;
+  --color-border-danger:    #fca5a5;
+  --color-border-warning:   #fcd34d;
+  --color-border-success:   #86efac;
+
+  /* Brand */
+  --color-primary:      #1a56a0;
+  --color-primary-dark: #134080;
+  --color-secondary:    #e67e22;
+}
+
+/* ── Dark mode ───────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background-primary:   #111827;
+    --color-background-secondary: #1f2937;
+    --color-background-info:      #1e3a5f;
+    --color-background-danger:    #3b1515;
+    --color-background-warning:   #3b2a0e;
+    --color-background-success:   #14332a;
+
+    --color-text-primary:   #f9fafb;
+    --color-text-secondary: #9ca3af;
+    --color-text-tertiary:  #6b7280;
+    --color-text-info:      #60a5fa;
+    --color-text-danger:    #f87171;
+    --color-text-warning:   #fbbf24;
+    --color-text-success:   #4ade80;
+
+    --color-border-primary:   #f9fafb;
+    --color-border-secondary: #374151;
+    --color-border-tertiary:  #1f2937;
+    --color-border-info:      #1d4ed8;
+    --color-border-danger:    #b91c1c;
+    --color-border-warning:   #b45309;
+    --color-border-success:   #15803d;
+
+    --color-primary:      #3b82f6;
+    --color-primary-dark: #2563eb;
+  }
+}
+
+/* ── KDS — Kitchen Display System (sempre dark, indipendente da prefers-color-scheme) ── */
+:root {
+  --kds-bg:              #0f0f0f;
+  --kds-surface:         #1a1a1a;
+  --kds-surface-alt:     #222222;
+  --kds-border:          #2e2e2e;
+  --kds-text-primary:    #f5f5f5;
+  --kds-text-secondary:  #888888;
+  --kds-text-muted:      #555555;
+
+  --kds-pending-accent:  #3a3a3a;
+  --kds-in-corso-accent: #f59e0b;
+  --kds-pronto-accent:   #22c55e;
+  --kds-attesa-accent:   #d4a017;
+  --kds-alert:           #ef4444;
+
+  --kds-cucina-accent:   #60a5fa;
+  --kds-pizzeria-accent: #fb923c;
+  --kds-bar-accent:      #c084fc;
+
+  /* Categorie varianti — evidenziano senza/poco/abbondante/aggiunta nei KDS */
+  --kds-var-remove:      #ef4444;  /* SENZA   — rosso */
+  --kds-var-add:         #34d399;  /* AGG.    — verde */
+  --kds-var-less:        #38bdf8;  /* POCO    — azzurro */
+  --kds-var-more:        #fbbf24;  /* ABBOND. — ambra */
+}
+
+@keyframes kds-flash {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.kds-new { animation: kds-flash 0.5s ease-in-out 4; }
+
+/* ── Reset & base ────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { min-height: 100vh; }
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ── PIN shake animation ─────────────────────────────────────────────────── */
+@keyframes pin-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-8px); }
+  40%       { transform: translateX(8px); }
+  60%       { transform: translateX(-6px); }
+  80%       { transform: translateX(6px); }
+}
+.pin-shake { animation: pin-shake 0.5s ease; }
+
+/* ── Table status colors ─────────────────────────────────────────────────── */
+.table-libero  { border-color: var(--color-border-tertiary); }
+.table-occupato { border-color: var(--color-border-warning); background: var(--color-background-warning); }
+.table-in_corso { border-color: var(--color-border-info);    background: var(--color-background-info); }

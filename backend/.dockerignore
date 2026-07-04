@@ -1,0 +1,7 @@
+# Dipendenze e artefatti ricreati DENTRO l'immagine durante il build.
+# Escluderli velocizza il build ed evita di copiare i binari dell'host
+# (es. vendor/ compilato su Windows) dentro un'immagine Linux.
+vendor/
+node_modules/
+.git/
+storage/logs/*

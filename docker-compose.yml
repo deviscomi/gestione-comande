@@ -1,0 +1,154 @@
+# ==========================================================================
+#  Gestione Comande — stack Docker di produzione
+#  Configurazione unica nel file ".env" di questa cartella (vedi .env.example).
+#  Avvio:            docker compose up -d --build
+#  Auto-restart:     tutti i servizi hanno restart: unless-stopped
+#                    (+ `systemctl enable docker` sull'host → ripartenza al reboot)
+# ==========================================================================
+
+# Variabili applicative condivise da app/reverb/queue/scheduler (stesso codice,
+# stessa immagine). I valori arrivano dal ".env" di root; il testo dopo ":-" è
+# il default di fallback se la variabile non è impostata.
+x-app-env: &app-env
+  APP_NAME: "Gestione Comande"
+  APP_ENV: ${APP_ENV:-production}
+  APP_DEBUG: ${APP_DEBUG:-false}
+  APP_KEY: ${APP_KEY:-base64:HxlVaGOvP4trgAM2ov0pVLqkQAU6SaFpCz+q/46k+kA=}
+  APP_URL: ${APP_URL:-http://localhost}
+  APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Rome}
+  DB_CONNECTION: mariadb
+  DB_HOST: mariadb
+  DB_PORT: 3306
+  DB_DATABASE: ${DB_DATABASE:-gestione_comande}
+  DB_USERNAME: ${DB_USERNAME:-comande}
+  DB_PASSWORD: ${DB_PASSWORD:-secret}
+  BROADCAST_CONNECTION: reverb
+  CACHE_STORE: database
+  QUEUE_CONNECTION: database
+  SESSION_DRIVER: database
+  REVERB_APP_ID: ${REVERB_APP_ID:-gestione-comande}
+  REVERB_APP_KEY: ${REVERB_APP_KEY:-comande-key}
+  REVERB_APP_SECRET: ${REVERB_APP_SECRET:-comande-secret}
+  REVERB_HOST: reverb
+  REVERB_PORT: 8080
+  REVERB_SCHEME: http
+
+# Volumi condivisi da tutti i container PHP. bootstrap/cache e storage/framework/views
+# sono volumi ANONIMI per-container: evitano che i 4 container scrivano in concorrenza
+# la stessa cache Laravel sul bind-mount (config:cache/route:cache/view:cache) ad ogni
+# boot — cosa che potrebbe corrompere config.php e impedire l'avvio.
+x-app-volumes: &app-volumes
+  - ./backend:/var/www/html
+  - /var/www/html/vendor
+  - /var/www/html/bootstrap/cache
+  - /var/www/html/storage/framework/views
+
+services:
+  app:
+    build: ./backend
+    image: gestione-comande-app   # immagine condivisa da app/reverb/queue/scheduler (stesso codice)
+    # Esegue la copia "live" dell'entrypoint dal mount: le modifiche a docker-entrypoint.sh
+    # NON richiedono il rebuild dell'immagine. (override entrypoint ⇒ serve command esplicito)
+    entrypoint: ["bash", "/var/www/html/docker-entrypoint.sh"]
+    command: ["php-fpm"]
+    restart: unless-stopped
+    volumes: *app-volumes
+    networks: [comande]
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      <<: *app-env
+      # Solo il container 'app' esegue migrazioni e seed (vedi docker-entrypoint.sh)
+      RUN_MIGRATIONS: "true"
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-80}:80"
+    volumes:
+      - ./backend:/var/www/html
+      - ./frontend/dist:/var/www/frontend
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
+    networks: [comande]
+    depends_on:
+      app:
+        condition: service_started
+      # nginx serve ./frontend/dist: attende che il build one-shot sia terminato con successo.
+      frontend-build:
+        condition: service_completed_successfully
+
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE:-gestione_comande}
+      MARIADB_USER: ${DB_USERNAME:-comande}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-secret}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks: [comande]
+    # Nessuna porta esposta all'host: il DB è raggiungibile solo dalla rete interna 'comande'.
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  reverb:
+    image: gestione-comande-app   # riusa l'immagine di 'app' (build unico); NON migra/seeda
+    entrypoint: ["bash", "/var/www/html/docker-entrypoint.sh"]
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    restart: unless-stopped
+    volumes: *app-volumes
+    networks: [comande]
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    # Nessuna porta esposta: nginx raggiunge Reverb internamente come reverb:8080 (proxy WS).
+    environment: *app-env
+
+  queue:
+    image: gestione-comande-app   # riusa l'immagine di 'app' (build unico); NON migra/seeda
+    entrypoint: ["bash", "/var/www/html/docker-entrypoint.sh"]
+    command: php artisan queue:work --queue=printing,default --sleep=3 --tries=5 --timeout=60
+    restart: unless-stopped
+    volumes: *app-volumes
+    networks: [comande]
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment: *app-env
+
+  scheduler:
+    image: gestione-comande-app   # riusa l'immagine di 'app' (build unico); NON migra/seeda
+    entrypoint: ["bash", "/var/www/html/docker-entrypoint.sh"]
+    command: php artisan schedule:work   # tiene vivo lo scheduler → logs:cleanup mensile
+    restart: unless-stopped
+    volumes: *app-volumes
+    networks: [comande]
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment: *app-env
+
+  # Build one-shot del frontend (React/Vite): compila ./frontend/dist e termina.
+  # Nessun Node necessario sul server. nginx attende il suo completamento (vedi depends_on).
+  # Il volume anonimo su node_modules isola i binari Linux dal node_modules dell'host (Windows).
+  frontend-build:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run build"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks: [comande]
+    restart: "no"
+
+networks:
+  comande: {}
+
+volumes:
+  mariadb_data: {}

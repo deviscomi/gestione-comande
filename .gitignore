@@ -1,0 +1,47 @@
+# ── Dipendenze ────────────────────────────────────────────────
+node_modules/
+/vendor/
+backend/vendor/
+
+# ── Ambiente / segreti ────────────────────────────────────────
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# ── Laravel: storage & cache runtime ──────────────────────────
+backend/storage/logs/*
+!backend/storage/logs/.gitignore
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/framework/testing/*
+backend/storage/app/public/*
+backend/storage/app/print-backups/*
+backend/storage/db_backups/*
+backend/bootstrap/cache/*.php
+
+# ── Build frontend (rigenerato da `npm run build`) ────────────
+frontend/dist/
+frontend/dist-ssr/
+frontend/dev-dist/
+
+# ── Log generici ──────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Editor / OS ───────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.sw?
+
+# ── Claude Code (locale) ──────────────────────────────────────
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
