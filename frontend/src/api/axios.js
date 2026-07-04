@@ -33,6 +33,18 @@ api.interceptors.response.use(
       }
     }
 
+    // Modulo disattivato (403 module_disabled): capita con una SPA "stale" quando
+    // il tier cambia sotto una sessione viva e si raggiunge un URL non più valido.
+    // I display KDS gestiscono il modulo spento da soli (KdsGate): non toccarli.
+    // Per le sotto-pagine admin si torna in modo pulito alla dashboard.
+    if (err.response?.status === 403 && err.response.data?.error_code === 'module_disabled') {
+      const path = window.location.pathname
+      if (!path.startsWith('/kds') && path.startsWith('/admin/')) {
+        window.location.href = '/admin'
+      }
+      return Promise.reject(err)
+    }
+
     // Nessuna risposta dal server = connessione assente.
     // Le mutazioni (non-GET) vengono salvate in IndexedDB e
     // riprovate automaticamente al ripristino della connessione.
