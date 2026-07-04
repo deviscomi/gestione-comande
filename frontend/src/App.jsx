@@ -30,7 +30,7 @@ import DailyClosure from './pages/admin/DailyClosure'
 import Settings from './pages/admin/Settings'
 import ImportExport from './pages/admin/ImportExport'
 import ActivityLogs from './pages/admin/ActivityLogs'
-import KdsDisplay from './pages/kds/KdsDisplay'
+import KdsGate from './pages/kds/KdsGate'
 import CashierDashboard from './pages/cashier/CashierDashboard'
 import CashierTableView from './pages/cashier/CashierTableView'
 
@@ -136,10 +136,10 @@ export default function App() {
         <Route path="/cassa" element={<CashierRoute><CashierDashboard /></CashierRoute>} />
         <Route path="/cassa/tavoli/:id" element={<CashierRoute><CashierTableView /></CashierRoute>} />
 
-        {/* KDS — Kitchen Display System (nessun auth, nessun layout) */}
-        <Route path="/kds/cucina"   element={<KdsDisplay department="cucina" />} />
-        <Route path="/kds/pizzeria" element={<KdsDisplay department="pizzeria" />} />
-        <Route path="/kds/bar"      element={<KdsDisplay department="bar" />} />
+        {/* KDS — Kitchen Display System (nessun login; gated dal modulo kds) */}
+        <Route path="/kds/cucina"   element={<KdsGate department="cucina" />} />
+        <Route path="/kds/pizzeria" element={<KdsGate department="pizzeria" />} />
+        <Route path="/kds/bar"      element={<KdsGate department="bar" />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Events\KdsStatusChanged;
 use App\Http\Controllers\Controller;
 use App\Models\KdsStatus;
+use App\Models\Module;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ServiceSchedule;
@@ -15,6 +16,17 @@ use Illuminate\Http\Request;
 class KdsController extends Controller
 {
     private const DEPARTMENTS = ['cucina', 'pizzeria', 'bar'];
+
+    /**
+     * GET /api/v1/kds/enabled
+     *
+     * Endpoint pubblico (non gated): dice al display se il modulo KDS è attivo,
+     * così può mostrare "Modulo non attivo" senza montare la pagina viva.
+     */
+    public function enabled(): JsonResponse
+    {
+        return response()->json(['enabled' => Module::isEnabled('kds')]);
+    }
 
     /**
      * GET /api/v1/kds/queue?department=cucina|pizzeria|bar
