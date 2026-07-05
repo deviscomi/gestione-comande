@@ -130,7 +130,12 @@ class OrderSendController extends Controller
             ->where('order_send_id', $txResult['orderSend']->id)
             ->get();
 
-        $printJobs = $this->printDispatcher->dispatch($order, $txResult['orderSend'], $sentItems);
+        // Stampa attiva: crea e dispatcha i PrintJob. Se il modulo printing è
+        // spento (decisione 3) NON si creano né si dispatchano job — l'ordine
+        // viene comunque inviato (comande e KDS restano operativi).
+        $printJobs = $this->license->isActive('printing')
+            ? $this->printDispatcher->dispatch($order, $txResult['orderSend'], $sentItems)
+            : collect();
 
         // KDS attivo (piano Pro): crea/aggiorna KdsStatus per ogni uscita × reparto
         // e notifica i display. Se il modulo è spento (Base) NON si creano record
