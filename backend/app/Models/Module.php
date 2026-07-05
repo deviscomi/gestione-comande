@@ -22,12 +22,12 @@ class Module extends Model
         return $query->where('is_active', true);
     }
 
+    /**
+     * Verifica se un modulo è attivo. Delega all'unico punto di verità
+     * (LicenseService::isActive), che gestisce il caso 'core' e la cache.
+     */
     public static function isEnabled(string $slug): bool
     {
-        if ($slug === 'core') {
-            return true;
-        }
-
-        return static::where('slug', $slug)->value('is_active') ?? false;
+        return app(\App\Services\LicenseService::class)->isActive($slug);
     }
 }
