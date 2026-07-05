@@ -35,6 +35,7 @@ import CashierDashboard from './pages/cashier/CashierDashboard'
 import CashierTableView from './pages/cashier/CashierTableView'
 import ModuleGate from './components/ModuleGate'
 import ModuloDisattivato from './components/ModuloDisattivato'
+import PwaUpdatePrompt from './components/PwaUpdatePrompt'
 
 function isAdmin(user) {
   return user?.role === 'admin' || user?.role === 'super_admin'
@@ -118,6 +119,7 @@ export default function App() {
   return (
     <>
       <PinLock />
+      <PwaUpdatePrompt />
       <Routes>
         <Route path="/login" element={<Login />} />
 

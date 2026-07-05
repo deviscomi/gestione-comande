@@ -6,7 +6,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' invece di 'autoUpdate': su un tablet in servizio un reload
+      // automatico interromperebbe l'inserimento di una comanda. L'aggiornamento
+      // viene proposto e applicato solo quando l'operatore conferma
+      // (vedi components/PwaUpdatePrompt.jsx).
+      registerType: 'prompt',
       manifest: {
         name: 'Gestione Comande',
         short_name: 'Comande',
