@@ -13,7 +13,7 @@ class StoreUserRequest extends FormRequest
         return [
             'name'     => 'required|string|max:100',
             'surname'  => 'required|string|max:100',
-            'username' => 'required|string|max:50|unique:users,username',
+            'username' => 'required|string|max:50|alpha_dash|unique:users,username',
             'password' => 'required|string|min:6',
             'pin'      => 'required|string|digits_between:4,6',
             'role'     => 'sometimes|in:admin,waiter,cashier',

@@ -16,6 +16,15 @@ class ActivityLogController extends Controller
 
     public function index(Request $request): AnonymousResourceCollection
     {
+        // m3: valida i parametri di query (le date finiscono concatenate nel WHERE).
+        $request->validate([
+            'user_id'     => 'sometimes|nullable|integer',
+            'action'      => 'sometimes|nullable|string|max:100',
+            'entity_type' => 'sometimes|nullable|string|max:100',
+            'from'        => 'sometimes|nullable|date',
+            'to'          => 'sometimes|nullable|date',
+        ]);
+
         $q = ActivityLog::with('user');
 
         // filled() (non has()): i valori vuoti inviati dal frontend non devono filtrare
