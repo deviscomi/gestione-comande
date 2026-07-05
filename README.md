@@ -31,8 +31,11 @@ Due sole fasce, distinte unicamente dal modulo **KDS**:
 
 | Tier   | Moduli attivi                                                                 | KDS |
 |--------|-------------------------------------------------------------------------------|-----|
-| `base` | core, printing, pizzeria, reports, daily_closure, advanced_backoffice, outdoor_tables, fiscal | ❌  |
+| `base` | core, printing, pizzeria, reports, daily_closure, advanced_backoffice, fiscal | ❌  |
 | `pro`  | tutti quelli di *base* **+ kds**                                               | ✅  |
+
+> La gestione di zone/tavoli esterni è sempre disponibile (attributo
+> `Zone.is_outdoor`), non è un modulo a sé.
 
 Un'installazione pulita parte in **Base** (KDS spento).
 
