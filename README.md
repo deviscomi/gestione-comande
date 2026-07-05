@@ -97,3 +97,22 @@ docker compose exec app php artisan license:set-tier pro    # KDS attivo
 ```
 
 In alternativa via API (admin): `PUT /api/v1/license` con `{ "tier": "pro" }`.
+
+### Code: stampa e broadcast
+
+Il worker gira con `queue:work --queue=printing,default`: i `PrintJob` usano la
+coda **`printing`** (prioritaria), i broadcast WebSocket la coda **`default`**.
+Sono già logicamente separati.
+
+Con un **solo** worker, però, un job di stampa lento (timeout TCP fino a 60s
+verso una stampante offline) può ritardare i broadcast real-time (KDS, stato
+tavoli). In installazioni con stampanti spesso irraggiungibili si consiglia di
+sdoppiare il worker in due servizi:
+
+```yaml
+# es. in docker-compose.yml
+queue-print:     php artisan queue:work --queue=printing --tries=5 --timeout=60
+queue-default:   php artisan queue:work --queue=default  --tries=5 --timeout=60
+```
+
+così una stampa bloccata non rallenta gli aggiornamenti in tempo reale.
