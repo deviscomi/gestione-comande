@@ -99,6 +99,22 @@ export default function App() {
     return () => clearInterval(interval)
   }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Notifica quando una o più azioni salvate offline non sono state applicate
+  // (richiesta non valida o troppi errori server): niente scarto silenzioso.
+  useEffect(() => {
+    const onDropped = (e) => {
+      const n = e.detail?.length ?? 0
+      if (n > 0) {
+        window.alert(
+          `${n} azione/i salvata/e offline non ${n === 1 ? 'è stata applicata' : 'sono state applicate'} ` +
+          `(richiesta non valida o errore del server). Verifica lo stato e riprova manualmente.`
+        )
+      }
+    }
+    window.addEventListener('offline-queue-dropped', onDropped)
+    return () => window.removeEventListener('offline-queue-dropped', onDropped)
+  }, [])
+
   return (
     <>
       <PinLock />
