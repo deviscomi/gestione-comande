@@ -12,7 +12,8 @@ export const ordersApi = {
   getActiveOrders: () => api.get('/orders/active'),
   getOrder:        (id) => api.get(`/orders/${id}`),
   createOrder: (tableId) => api.post('/orders', { table_id: tableId }),
-  closeOrder:  (id)    => api.patch(`/orders/${id}/close`),
+  closeOrder:  (id, confirmFailedPrints = false) =>
+    api.patch(`/orders/${id}/close`, { confirm_failed_prints: confirmFailedPrints }),
   getKdsStatus:(id)    => api.get(`/orders/${id}/kds-status`),
 
   getOrderItems: (orderId) => api.get(`/orders/${orderId}/items`),

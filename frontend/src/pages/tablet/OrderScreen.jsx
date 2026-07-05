@@ -168,7 +168,7 @@ export default function OrderScreen() {
   }
 
   const closeOrderMut = useMutation({
-    mutationFn: () => ordersApi.closeOrder(orderId),
+    mutationFn: (confirm = false) => ordersApi.closeOrder(orderId, confirm),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['zones'] })
       qc.invalidateQueries({ queryKey: ['table', id] })
@@ -176,6 +176,15 @@ export default function OrderScreen() {
       navigate('/')
     },
     onError: (err) => {
+      // M7: stampe fallite ⇒ conferma bloccante prima di eliminare i PDF di backup.
+      if (err.response?.status === 409 && err.response?.data?.error_code === 'failed_prints_pending') {
+        if (window.confirm(`${err.response.data.message}\n\nChiudere comunque il tavolo?`)) {
+          closeOrderMut.mutate(true)
+          return
+        }
+        setShowCloseConfirm(false)
+        return
+      }
       setShowCloseConfirm(false)
       alert(err.response?.data?.message ?? 'Errore durante la chiusura del tavolo')
     },

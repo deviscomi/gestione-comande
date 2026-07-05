@@ -123,7 +123,7 @@ class OrderController extends Controller
         return response()->json(null, 204);
     }
 
-    public function close(Order $order): JsonResponse
+    public function close(Request $request, Order $order): JsonResponse
     {
         if ($order->status === 'locked') {
             return response()->json(['message' => 'Ordine bloccato — non modificabile'], 422);
@@ -131,6 +131,20 @@ class OrderController extends Controller
 
         if ($order->payments()->exists() && !$order->isFullySettled()) {
             return response()->json(['message' => 'Il conto non è ancora completamente saldato'], 422);
+        }
+
+        // M7: avviso bloccante se ci sono stampe fallite. La chiusura elimina i
+        // PDF di backup (unica traccia di ciò che non è uscito fisicamente):
+        // l'operatore deve confermare esplicitamente (confirm_failed_prints).
+        if (! $request->boolean('confirm_failed_prints')) {
+            $failed = $order->printJobs()->where('status', 'failed')->count();
+            if ($failed > 0) {
+                return response()->json([
+                    'message'      => "Ci sono {$failed} stampe non riuscite: chiudendo il tavolo i relativi PDF di backup verranno eliminati. Verifica di aver consegnato le comande prima di continuare.",
+                    'error_code'   => 'failed_prints_pending',
+                    'failed_count' => $failed,
+                ], 409);
+            }
         }
 
         DB::transaction(function () use ($order) {
