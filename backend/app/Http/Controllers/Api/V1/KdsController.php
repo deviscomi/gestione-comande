@@ -32,6 +32,15 @@ class KdsController extends Controller
      * GET /api/v1/kds/queue?department=cucina|pizzeria|bar
      *
      * Ritorna le comande raggruppate per ordine per il reparto richiesto.
+     *
+     * M8 — Performance (follow-up post-lancio): il metodo è già pre-filtrato a
+     * DB (status='open', cutoff 3 min, whereIn su order_id/status) e gli indici
+     * caldi esistono (order_items(order_id,status), kds_statuses.order_id). Il
+     * grosso del costo è l'elaborazione in memoria della logica di coordinamento
+     * bar/uscite: ottimizzarla (payload incrementale/cache breve) è ad alto
+     * rischio di regressioni sui display real-time, quindi rimandata a dopo il
+     * lancio con profiling su dati reali. Nessuna ottimizzazione a basso rischio
+     * disponibile ora.
      */
     public function queue(Request $request): JsonResponse
     {
