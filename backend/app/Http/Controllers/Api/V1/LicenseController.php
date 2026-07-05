@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\LicenseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class LicenseController extends Controller
 {
@@ -28,7 +29,7 @@ class LicenseController extends Controller
     {
         $data = $request->validate([
             'licensee_name' => 'sometimes|string|max:255',
-            'tier'          => 'sometimes|string|max:64',
+            'tier'          => ['sometimes', 'string', Rule::in(LicenseService::TIERS)],
             'license_key'   => 'sometimes|nullable|string|max:255',
             'expires_at'    => 'sometimes|nullable|date',
             'notes'         => 'sometimes|nullable|string',
@@ -36,7 +37,14 @@ class LicenseController extends Controller
 
         $lic = $license->getLicense();
         $lic->update($data);
-        $license->flushCache();
+
+        // Il tier è funzionale: impostarlo riconcilia i moduli (pro ⇒ kds on,
+        // base ⇒ kds off). applyTier fa già il flush della cache moduli.
+        if (array_key_exists('tier', $data)) {
+            $license->applyTier($data['tier']);
+        } else {
+            $license->flushCache();
+        }
 
         return response()->json([
             'licensee_name' => $lic->licensee_name,

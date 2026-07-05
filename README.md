@@ -83,3 +83,14 @@ cd frontend && npm ci && npm run build
 
 Il build (`frontend/dist/`) viene servito da nginx come definito in
 `docker/nginx.conf`.
+
+### 4. Assegnazione del tier
+
+Il tier è funzionale: impostarlo riconcilia i moduli (kds on/off).
+
+```bash
+docker compose exec app php artisan license:set-tier base   # KDS spento
+docker compose exec app php artisan license:set-tier pro    # KDS attivo
+```
+
+In alternativa via API (admin): `PUT /api/v1/license` con `{ "tier": "pro" }`.
