@@ -30,9 +30,12 @@ import DailyClosure from './pages/admin/DailyClosure'
 import Settings from './pages/admin/Settings'
 import ImportExport from './pages/admin/ImportExport'
 import ActivityLogs from './pages/admin/ActivityLogs'
-import KdsDisplay from './pages/kds/KdsDisplay'
+import KdsGate from './pages/kds/KdsGate'
 import CashierDashboard from './pages/cashier/CashierDashboard'
 import CashierTableView from './pages/cashier/CashierTableView'
+import ModuleGate from './components/ModuleGate'
+import ModuloDisattivato from './components/ModuloDisattivato'
+import PwaUpdatePrompt from './components/PwaUpdatePrompt'
 
 function isAdmin(user) {
   return user?.role === 'admin' || user?.role === 'super_admin'
@@ -97,9 +100,26 @@ export default function App() {
     return () => clearInterval(interval)
   }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Notifica quando una o più azioni salvate offline non sono state applicate
+  // (richiesta non valida o troppi errori server): niente scarto silenzioso.
+  useEffect(() => {
+    const onDropped = (e) => {
+      const n = e.detail?.length ?? 0
+      if (n > 0) {
+        window.alert(
+          `${n} azione/i salvata/e offline non ${n === 1 ? 'è stata applicata' : 'sono state applicate'} ` +
+          `(richiesta non valida o errore del server). Verifica lo stato e riprova manualmente.`
+        )
+      }
+    }
+    window.addEventListener('offline-queue-dropped', onDropped)
+    return () => window.removeEventListener('offline-queue-dropped', onDropped)
+  }, [])
+
   return (
     <>
       <PinLock />
+      <PwaUpdatePrompt />
       <Routes>
         <Route path="/login" element={<Login />} />
 
@@ -114,21 +134,48 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="menu"     element={<AdminOnlyRoute><MenuKitchen /></AdminOnlyRoute>} />
           <Route path="bar"      element={<AdminOnlyRoute><MenuBar /></AdminOnlyRoute>} />
-          <Route path="pizzeria" element={<AdminOnlyRoute><MenuPizzeria /></AdminOnlyRoute>} />
+          <Route path="pizzeria" element={
+            <ModuleGate slug="pizzeria" fallback={<ModuloDisattivato nome="Pizzeria" />}>
+              <AdminOnlyRoute><MenuPizzeria /></AdminOnlyRoute>
+            </ModuleGate>} />
           <Route path="vini"     element={<AdminOnlyRoute><MenuVini /></AdminOnlyRoute>} />
           <Route path="tables"   element={<Tables />} />
           <Route path="zones"    element={<AdminOnlyRoute><Zones /></AdminOnlyRoute>} />
-          <Route path="waiters"  element={<AdminOnlyRoute><Waiters /></AdminOnlyRoute>} />
-          <Route path="printers" element={<AdminOnlyRoute><Printers /></AdminOnlyRoute>} />
-          <Route path="fiscal-devices" element={<AdminOnlyRoute><FiscalDevices /></AdminOnlyRoute>} />
-          <Route path="fiscal-receipts" element={<FiscalReceipts />} />
+          <Route path="waiters"  element={
+            <ModuleGate slug="advanced_backoffice" fallback={<ModuloDisattivato nome="Backoffice avanzato" />}>
+              <AdminOnlyRoute><Waiters /></AdminOnlyRoute>
+            </ModuleGate>} />
+          <Route path="printers" element={
+            <ModuleGate slug="printing" fallback={<ModuloDisattivato nome="Stampa" />}>
+              <AdminOnlyRoute><Printers /></AdminOnlyRoute>
+            </ModuleGate>} />
+          <Route path="fiscal-devices" element={
+            <ModuleGate slug="fiscal" fallback={<ModuloDisattivato nome="Scontrini fiscali" />}>
+              <AdminOnlyRoute><FiscalDevices /></AdminOnlyRoute>
+            </ModuleGate>} />
+          <Route path="fiscal-receipts" element={
+            <ModuleGate slug="fiscal" fallback={<ModuloDisattivato nome="Scontrini fiscali" />}>
+              <FiscalReceipts />
+            </ModuleGate>} />
           <Route path="schedule" element={<ServiceSchedule />} />
-          <Route path="reports"  element={<Reports />} />
+          <Route path="reports"  element={
+            <ModuleGate slug="reports" fallback={<ModuloDisattivato nome="Report" />}>
+              <Reports />
+            </ModuleGate>} />
           <Route path="history"  element={<OrderHistory />} />
-          <Route path="closure"  element={<DailyClosure />} />
+          <Route path="closure"  element={
+            <ModuleGate slug="daily_closure" fallback={<ModuloDisattivato nome="Chiusura giornaliera" />}>
+              <DailyClosure />
+            </ModuleGate>} />
           <Route path="settings" element={<AdminOnlyRoute><Settings /></AdminOnlyRoute>} />
-          <Route path="import-export" element={<AdminOnlyRoute><ImportExport /></AdminOnlyRoute>} />
-          <Route path="logs"     element={<AdminOnlyRoute><ActivityLogs /></AdminOnlyRoute>} />
+          <Route path="import-export" element={
+            <ModuleGate slug="advanced_backoffice" fallback={<ModuloDisattivato nome="Backoffice avanzato" />}>
+              <AdminOnlyRoute><ImportExport /></AdminOnlyRoute>
+            </ModuleGate>} />
+          <Route path="logs"     element={
+            <ModuleGate slug="advanced_backoffice" fallback={<ModuloDisattivato nome="Backoffice avanzato" />}>
+              <AdminOnlyRoute><ActivityLogs /></AdminOnlyRoute>
+            </ModuleGate>} />
           <Route path="licenza"  element={<AdminOnlyRoute><Licenza /></AdminOnlyRoute>} />
         </Route>
 
@@ -136,10 +183,10 @@ export default function App() {
         <Route path="/cassa" element={<CashierRoute><CashierDashboard /></CashierRoute>} />
         <Route path="/cassa/tavoli/:id" element={<CashierRoute><CashierTableView /></CashierRoute>} />
 
-        {/* KDS — Kitchen Display System (nessun auth, nessun layout) */}
-        <Route path="/kds/cucina"   element={<KdsDisplay department="cucina" />} />
-        <Route path="/kds/pizzeria" element={<KdsDisplay department="pizzeria" />} />
-        <Route path="/kds/bar"      element={<KdsDisplay department="bar" />} />
+        {/* KDS — Kitchen Display System (nessun login; gated dal modulo kds) */}
+        <Route path="/kds/cucina"   element={<KdsGate department="cucina" />} />
+        <Route path="/kds/pizzeria" element={<KdsGate department="pizzeria" />} />
+        <Route path="/kds/bar"      element={<KdsGate department="bar" />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

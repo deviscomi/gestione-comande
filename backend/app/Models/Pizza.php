@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Pizza extends Model
 {
-    protected $fillable = ['name', 'description', 'base_price', 'is_active', 'default_base'];
+    protected $fillable = ['category_id', 'name', 'description', 'base_price', 'is_active', 'default_base'];
 
     protected function casts(): array
     {
@@ -15,6 +16,11 @@ class Pizza extends Model
             'base_price' => 'decimal:2',
             'is_active'  => 'boolean',
         ];
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
     }
 
     public function defaultIngredients(): BelongsToMany

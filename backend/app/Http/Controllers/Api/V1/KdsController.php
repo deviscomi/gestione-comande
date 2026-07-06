@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Events\KdsStatusChanged;
 use App\Http\Controllers\Controller;
 use App\Models\KdsStatus;
+use App\Models\Module;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ServiceSchedule;
@@ -17,9 +18,29 @@ class KdsController extends Controller
     private const DEPARTMENTS = ['cucina', 'pizzeria', 'bar'];
 
     /**
+     * GET /api/v1/kds/enabled
+     *
+     * Endpoint pubblico (non gated): dice al display se il modulo KDS è attivo,
+     * così può mostrare "Modulo non attivo" senza montare la pagina viva.
+     */
+    public function enabled(): JsonResponse
+    {
+        return response()->json(['enabled' => Module::isEnabled('kds')]);
+    }
+
+    /**
      * GET /api/v1/kds/queue?department=cucina|pizzeria|bar
      *
      * Ritorna le comande raggruppate per ordine per il reparto richiesto.
+     *
+     * M8 — Performance (follow-up post-lancio): il metodo è già pre-filtrato a
+     * DB (status='open', cutoff 3 min, whereIn su order_id/status) e gli indici
+     * caldi esistono (order_items(order_id,status), kds_statuses.order_id). Il
+     * grosso del costo è l'elaborazione in memoria della logica di coordinamento
+     * bar/uscite: ottimizzarla (payload incrementale/cache breve) è ad alto
+     * rischio di regressioni sui display real-time, quindi rimandata a dopo il
+     * lancio con profiling su dati reali. Nessuna ottimizzazione a basso rischio
+     * disponibile ora.
      */
     public function queue(Request $request): JsonResponse
     {

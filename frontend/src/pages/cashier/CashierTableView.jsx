@@ -85,12 +85,21 @@ export default function CashierTableView() {
   })
 
   const closeOrderMut = useMutation({
-    mutationFn: () => ordersApi.closeOrder(orderId),
+    mutationFn: (confirm = false) => ordersApi.closeOrder(orderId, confirm),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cashier-orders'] })
       navigate('/cassa')
     },
-    onError: (err) => alert(err.response?.data?.message ?? 'Errore durante la chiusura del tavolo'),
+    onError: (err) => {
+      // M7: stampe fallite ⇒ conferma bloccante prima di eliminare i PDF di backup.
+      if (err.response?.status === 409 && err.response?.data?.error_code === 'failed_prints_pending') {
+        if (window.confirm(`${err.response.data.message}\n\nChiudere comunque il tavolo?`)) {
+          closeOrderMut.mutate(true)
+        }
+        return
+      }
+      alert(err.response?.data?.message ?? 'Errore durante la chiusura del tavolo')
+    },
   })
 
   if (!status) {

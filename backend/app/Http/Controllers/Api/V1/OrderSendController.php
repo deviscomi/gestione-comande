@@ -12,6 +12,7 @@ use App\Models\KdsStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderSend;
+use App\Services\LicenseService;
 use App\Services\PrintDispatcher;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
@@ -23,7 +24,10 @@ class OrderSendController extends Controller
 {
     use LogsActivity;
 
-    public function __construct(private PrintDispatcher $printDispatcher) {}
+    public function __construct(
+        private PrintDispatcher $printDispatcher,
+        private LicenseService $license,
+    ) {}
 
     public function index(Order $order): AnonymousResourceCollection
     {
@@ -126,15 +130,24 @@ class OrderSendController extends Controller
             ->where('order_send_id', $txResult['orderSend']->id)
             ->get();
 
-        $printJobs = $this->printDispatcher->dispatch($order, $txResult['orderSend'], $sentItems);
+        // Stampa attiva: crea e dispatcha i PrintJob. Se il modulo printing è
+        // spento (decisione 3) NON si creano né si dispatchano job — l'ordine
+        // viene comunque inviato (comande e KDS restano operativi).
+        $printJobs = $this->license->isActive('printing')
+            ? $this->printDispatcher->dispatch($order, $txResult['orderSend'], $sentItems)
+            : collect();
 
-        // Crea/aggiorna KdsStatus per ogni uscita × reparto e notifica i display
-        $this->createKdsStatuses($order, $txResult['orderSend'], $sentItems);
-        broadcast(new KdsStatusChanged(
-            department: 'all',
-            eventType: 'new_order',
-            payload: ['order_send_id' => $txResult['orderSend']->id]
-        ));
+        // KDS attivo (piano Pro): crea/aggiorna KdsStatus per ogni uscita × reparto
+        // e notifica i display. Se il modulo è spento (Base) NON si creano record
+        // KdsStatus né si emette il broadcast: i display non esistono.
+        if ($this->license->isActive('kds')) {
+            $this->createKdsStatuses($order, $txResult['orderSend'], $sentItems);
+            broadcast(new KdsStatusChanged(
+                department: 'all',
+                eventType: 'new_order',
+                payload: ['order_send_id' => $txResult['orderSend']->id]
+            ));
+        }
 
         return response()->json([
             'send_id'      => $txResult['orderSend']->id,

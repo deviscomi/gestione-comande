@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../../store/useAuthStore'
 import { useModuleStore } from '../../store/useModuleStore'
 import { adminApi } from '../../api/endpoints/admin'
+import ErrorBoundary from '../../components/ErrorBoundary'
+import LicenseBanner from '../../components/LicenseBanner'
 
 const NAV = [
   { to: '/admin',           icon: '⊞',  label: 'Dashboard',      end: true, cashier: true },
@@ -92,7 +94,12 @@ export default function AdminLayout() {
       </nav>
 
       <main style={{ flex: 1, overflowY: 'auto' }}>
-        <Outlet />
+        {/* Avviso non bloccante sullo stato della licenza (scaduta/in scadenza). */}
+        <LicenseBanner />
+        {/* Un crash in una pagina admin resta contenuto qui: la sidebar sopravvive. */}
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   )

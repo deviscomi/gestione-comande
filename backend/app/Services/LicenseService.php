@@ -8,6 +8,23 @@ use Illuminate\Support\Facades\Cache;
 
 class LicenseService
 {
+    /** Tier commerciali ammessi. kds è l'unico modulo discriminante. */
+    public const TIERS = ['base', 'pro'];
+
+    /**
+     * Riconcilia lo stato dei moduli in base al tier della licenza.
+     *
+     * kds è l'UNICO discriminante fra i piani: pro ⇒ kds attivo, base ⇒ kds
+     * spento. Gli altri moduli non vengono toccati (restano come configurati
+     * dall'operatore). Invalida la cache dei moduli.
+     */
+    public function applyTier(string $tier): void
+    {
+        Module::where('slug', 'kds')->update(['is_active' => $tier === 'pro']);
+
+        $this->flushCache();
+    }
+
     public function isActive(string $slug): bool
     {
         if ($slug === 'core') {

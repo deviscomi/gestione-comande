@@ -38,11 +38,23 @@ use Illuminate\Support\Facades\Route;
 // ── Health check (pubblico) ───────────────────────────────────────────────
 Route::get('v1/health', fn () => response()->json(['status' => 'ok']));
 
-// ── KDS — Kitchen Display System (PUBBLICO: display cucina/pizzeria senza login) ──
+// ── KDS — Kitchen Display System (display cucina/pizzeria/bar senza login) ──
+// Auth leggera (kds.auth): token condiviso o rete LAN fidata. Lettura (queue) e
+// scrittura (statuses/call) hanno scope separati e sono gated dal modulo `kds`
+// (assente in Base ⇒ 403 module_disabled). Auth PRIMA del modulo: un display
+// LAN autorizzato riceve un 403 chiaro quando il KDS è spento.
 Route::prefix('v1/kds')->group(function () {
-    Route::get('queue',                       [KdsController::class, 'queue']);
-    Route::patch('statuses/{kdsStatus}',      [KdsController::class, 'updateStatus']);
-    Route::patch('statuses/{kdsStatus}/call', [KdsController::class, 'call']);
+    // Stato del modulo — pubblico e non gated: il display sa se il KDS è
+    // attivo e può mostrare "Modulo non attivo" invece di una pagina viva.
+    Route::get('enabled', [KdsController::class, 'enabled']);
+
+    Route::get('queue', [KdsController::class, 'queue'])
+        ->middleware(['kds.auth:read', 'module:kds']);
+
+    Route::middleware(['kds.auth:write', 'module:kds'])->group(function () {
+        Route::patch('statuses/{kdsStatus}',      [KdsController::class, 'updateStatus']);
+        Route::patch('statuses/{kdsStatus}/call', [KdsController::class, 'call']);
+    });
 });
 
 Route::prefix('v1')->group(function () {
