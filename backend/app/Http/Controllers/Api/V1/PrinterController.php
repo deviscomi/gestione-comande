@@ -9,6 +9,8 @@ use App\Models\Printer;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class PrinterController extends Controller
 {
@@ -53,15 +55,6 @@ class PrinterController extends Controller
 
     public function test(Printer $printer): JsonResponse
     {
-        $socket = @fsockopen($printer->ip_address, $printer->port, $errno, $errstr, 3);
-
-        if (!$socket) {
-            return response()->json([
-                'success' => false,
-                'message' => "Stampante non raggiungibile: {$errstr} (errno {$errno})",
-            ], 503);
-        }
-
         $payload = "\x1B@"           // reset
             . "\x1Ba\x01"            // center
             . "\x1BE\x01"            // bold on
@@ -73,6 +66,37 @@ class PrinterController extends Controller
             . now()->format('d/m/Y H:i:s') . "\n"
             . "--------------------------------\n\n"
             . "\x1DV\x42\x00";       // cut
+
+        // Modalità 'agent': la stampante non è raggiungibile dal server remoto.
+        // Il test viene messo in coda per il Raspberry (vedi PrintAgentController).
+        if (config('printing.driver') === 'agent') {
+            $token = (string) Str::uuid();
+            $tests = Cache::get('print_agent:tests', []);
+            $tests[] = [
+                'token'       => $token,
+                'printer'     => [
+                    'name'       => $printer->name,
+                    'ip_address' => $printer->ip_address,
+                    'port'       => $printer->port,
+                ],
+                'payload_b64' => base64_encode($payload),
+                'created_at'  => now()->toIso8601String(),
+            ];
+            Cache::put('print_agent:tests', $tests, now()->addMinutes(5));
+
+            $this->logActivity('PRINTER_TEST', "Test stampa '{$printer->name}' accodato per l'agente", $printer);
+            return response()->json(['success' => true, 'queued_for_agent' => true, 'message' => "Test inviato all'agente di stampa"]);
+        }
+
+        // Modalità 'socket': invio diretto in LAN.
+        $socket = @fsockopen($printer->ip_address, $printer->port, $errno, $errstr, 3);
+
+        if (!$socket) {
+            return response()->json([
+                'success' => false,
+                'message' => "Stampante non raggiungibile: {$errstr} (errno {$errno})",
+            ], 503);
+        }
 
         fwrite($socket, $payload);
         fclose($socket);

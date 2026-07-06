@@ -25,6 +25,7 @@ class PrintJob extends Model
         'meta',
         'created_at',
         'printed_at',
+        'claimed_at',
     ];
 
     protected function casts(): array
@@ -34,6 +35,7 @@ class PrintJob extends Model
             'meta'       => 'array',
             'created_at' => 'datetime',
             'printed_at' => 'datetime',
+            'claimed_at' => 'datetime',
         ];
     }
 
@@ -65,5 +67,42 @@ class PrintJob extends Model
     public function scopeFailed($q)
     {
         return $q->where('status', 'failed');
+    }
+
+    /**
+     * Relazioni necessarie per rendere il payload ESC/POS.
+     * Condivise da ProcessPrintJob (socket) e dal fetch dell'agente, così i
+     * due percorsi producono esattamente lo stesso output.
+     */
+    public function scopeWithPrintRelations($q)
+    {
+        return $q->with([
+            'order.table.zone',
+            'order.user',
+            'order.items.modifications',
+            'order.items.dish.category',
+            'order.items.pizza',
+            'orderSend.items.modifications',
+            'orderSend.items.dish.category',
+            'orderSend.items.pizza',
+            'orderPayment.allocations.orderItem.dish',
+            'orderPayment.allocations.orderItem.pizza',
+            'orderPayment.allocations.orderItem.wine',
+            'printer',
+        ]);
+    }
+
+    /**
+     * Job prelevabili dall'agente di stampa: quelli in attesa, più quelli
+     * presi in carico ma con lease scaduto (agente/Pi crashato dopo il fetch).
+     */
+    public function scopeClaimable($q)
+    {
+        $leaseCutoff = now()->subSeconds((int) config('printing.agent_lease_seconds', 90));
+
+        return $q->where(function ($q) use ($leaseCutoff) {
+            $q->where('status', 'pending')
+              ->orWhere(fn ($q) => $q->where('status', 'printing')->where('claimed_at', '<', $leaseCutoff));
+        });
     }
 }

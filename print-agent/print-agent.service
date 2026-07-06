@@ -1,0 +1,22 @@
+[Unit]
+Description=Gestione Comande - Agente di stampa locale
+Documentation=https://github.com/deviscomi/gestione-comande
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Adatta il percorso a dove hai copiato la cartella print-agent
+WorkingDirectory=/opt/print-agent
+EnvironmentFile=/opt/print-agent/.env
+ExecStart=/usr/bin/node /opt/print-agent/index.js
+Restart=always
+RestartSec=5
+# Utente non privilegiato (default su Raspberry Pi OS)
+User=pi
+# Log su journald (journalctl -u print-agent -f)
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

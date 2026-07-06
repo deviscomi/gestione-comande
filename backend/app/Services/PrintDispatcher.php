@@ -23,6 +23,8 @@ class PrintDispatcher
             ->get()
             ->keyBy('department');
 
+        $agentMode = config('printing.driver') === 'agent';
+
         foreach ($printTypes as $type) {
             $job = PrintJob::create([
                 'order_id'      => $order->id,
@@ -34,7 +36,11 @@ class PrintDispatcher
                 'is_reprint'    => false,
             ]);
 
-            ProcessPrintJob::dispatch($job->id)->onQueue('printing');
+            // Modalità 'agent': il job (pending) resta in coda per il Raspberry.
+            // Modalità 'socket': il worker apre subito il socket verso la stampante.
+            if (! $agentMode) {
+                ProcessPrintJob::dispatch($job->id)->onQueue('printing');
+            }
             $jobs->push($job->fresh());
         }
 
@@ -53,7 +59,9 @@ class PrintDispatcher
             'is_reprint'    => true,
         ]);
 
-        ProcessPrintJob::dispatch($newJob->id)->onQueue('printing');
+        if (config('printing.driver') !== 'agent') {
+            ProcessPrintJob::dispatch($newJob->id)->onQueue('printing');
+        }
         return $newJob;
     }
 
