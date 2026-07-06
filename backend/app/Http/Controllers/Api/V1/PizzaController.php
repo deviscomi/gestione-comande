@@ -21,8 +21,9 @@ class PizzaController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $q = Pizza::query();
-        if ($request->has('is_active')) $q->where('is_active', $request->boolean('is_active'));
-        return PizzaResource::collection($q->with('defaultIngredients')->orderBy('name')->get());
+        if ($request->has('is_active'))   $q->where('is_active', $request->boolean('is_active'));
+        if ($request->has('category_id')) $q->where('category_id', $request->category_id);
+        return PizzaResource::collection($q->with(['category', 'defaultIngredients'])->orderBy('name')->get());
     }
 
     public function show(Pizza $pizza): JsonResponse
@@ -39,6 +40,7 @@ class PizzaController extends Controller
 
         return response()->json([
             'id'                  => $pizza->id,
+            'category_id'         => $pizza->category_id,
             'name'                => $pizza->name,
             'description'         => $pizza->description,
             'base_price'          => $pizza->base_price,

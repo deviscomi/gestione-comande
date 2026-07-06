@@ -2,16 +2,18 @@ import { useState, useEffect } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { menuApi } from '../../api/endpoints/menu'
 
-export default function PizzaForm({ pizza, onClose, onSave }) {
-  const [form, setForm] = useState({ name: '', description: '', base_price: '', is_active: true, default_base: '', default_ingredients: [] })
+export default function PizzaForm({ pizza, categories = [], onClose, onSave }) {
+  const [form, setForm] = useState({ category_id: '', name: '', description: '', base_price: '', is_active: true, default_base: '', default_ingredients: [] })
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (pizza?.id) {
       menuApi.getPizza(pizza.id).then(r => {
         const d = r.data?.data ?? r.data
-        setForm({ name: d.name, description: d.description ?? '', base_price: d.base_price, is_active: d.is_active, default_base: d.default_base ?? '', default_ingredients: d.default_ingredients?.map(i => i.id) ?? [] })
+        setForm({ category_id: d.category_id ?? '', name: d.name, description: d.description ?? '', base_price: d.base_price, is_active: d.is_active, default_base: d.default_base ?? '', default_ingredients: d.default_ingredients?.map(i => i.id) ?? [] })
       })
+    } else if (pizza?.category_id) {
+      setForm(f => ({ ...f, category_id: pizza.category_id }))
     }
   }, [pizza])
 
@@ -61,6 +63,14 @@ export default function PizzaForm({ pizza, onClose, onSave }) {
             }
           </div>
         ))}
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Categoria</label>
+          <select value={form.category_id} onChange={e => setForm(p => ({ ...p, category_id: e.target.value }))} style={F}>
+            <option value="">Seleziona...</option>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
 
         <div style={{ marginBottom: 12 }}>
           <label style={{ fontSize: 12, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Base di default</label>

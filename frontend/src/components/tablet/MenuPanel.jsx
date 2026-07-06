@@ -60,6 +60,9 @@ export default function MenuPanel({ orderId, onItemAdded }) {
     enabled: isPizzaCategory,
   })
 
+  // Ogni chip pizzeria è una categoria: mostra solo le pizze di quella categoria
+  const pizzasForCat = isPizzaCategory ? (pizzas?.filter(p => p.category_id === selectedCat) ?? []) : []
+
   // Carta dei Vini — sotto-categorie (Rosso/Rosato/Bianco/custom) e vini della sotto-categoria scelta
   const { data: wineCategories } = useQuery({
     queryKey: ['categories-wine', { is_active: true }],
@@ -180,9 +183,9 @@ export default function MenuPanel({ orderId, onItemAdded }) {
             ? <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>Caricamento...</div>
             : pizzasError
               ? <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-danger)', fontSize: 13 }}>Errore caricamento pizze — riprova</div>
-              : pizzas?.length === 0
+              : pizzasForCat.length === 0
                 ? <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>Nessuna pizza disponibile — aggiungile dal backoffice</div>
-                : pizzas?.map(pizza => (
+                : pizzasForCat.map(pizza => (
                     <button key={pizza.id} onClick={() => setPizzaConfig(pizza.id)} style={{
                       width: '100%', padding: '9px 12px', marginBottom: 6, borderRadius: 8, textAlign: 'left',
                       border: '1px solid var(--color-border-tertiary)',

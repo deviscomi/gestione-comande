@@ -11,6 +11,7 @@ class UpdatePizzaRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'category_id'           => 'sometimes|exists:categories,id',
             'name'                  => 'sometimes|string|max:150',
             'description'           => 'nullable|string',
             'base_price'            => 'sometimes|numeric|min:0',

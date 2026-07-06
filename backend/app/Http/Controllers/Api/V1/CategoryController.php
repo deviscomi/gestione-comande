@@ -55,6 +55,9 @@ class CategoryController extends Controller
         if ($category->department === 'carta_vini' && $category->wines()->exists()) {
             return response()->json(['message' => 'Impossibile eliminare: categoria con vini associati'], 422);
         }
+        if ($category->department === 'pizzeria' && $category->pizzas()->exists()) {
+            return response()->json(['message' => 'Impossibile eliminare: categoria con pizze associate'], 422);
+        }
         $this->logActivity('CATEGORY_DELETED', "Categoria '{$category->name}' eliminata", $category);
         $category->delete();
         return response()->json(null, 204);

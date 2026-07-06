@@ -26,6 +26,11 @@ class Category extends Model
         return $this->hasMany(Wine::class);
     }
 
+    public function pizzas(): HasMany
+    {
+        return $this->hasMany(Pizza::class);
+    }
+
     public function scopeActive($q)
     {
         return $q->where('is_active', true);

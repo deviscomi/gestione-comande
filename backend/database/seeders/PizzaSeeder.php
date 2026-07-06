@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Category;
 use App\Models\Pizza;
 use App\Models\PizzaIngredient;
 use Illuminate\Database\Seeder;
@@ -10,6 +11,13 @@ class PizzaSeeder extends Seeder
 {
     public function run(): void
     {
+        // Categoria pizzeria di default: le pizze seedate devono avere una
+        // categoria (il tablet filtra per chip categoria).
+        $category = Category::firstOrCreate(
+            ['name' => 'Pizze', 'department' => 'pizzeria'],
+            ['sort_order' => 5, 'is_active' => true]
+        );
+
         // ── Archivio ingredienti pizza ─────────────────────────────────────
         // firstOrCreate evita duplicati se il seeder viene rieseguito
         $ingNames = [
@@ -76,7 +84,7 @@ class PizzaSeeder extends Seeder
         foreach ($pizzas as $p) {
             $pizza = Pizza::firstOrCreate(
                 ['name' => $p['name']],
-                ['description' => $p['description'], 'base_price' => $p['base_price'], 'is_active' => true]
+                ['category_id' => $category->id, 'description' => $p['description'], 'base_price' => $p['base_price'], 'is_active' => true]
             );
 
             // Assegna ingredienti default (sync idempotente)

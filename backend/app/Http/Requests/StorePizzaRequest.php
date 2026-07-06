@@ -11,6 +11,7 @@ class StorePizzaRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'category_id'           => 'required|exists:categories,id',
             'name'                  => 'required|string|max:150',
             'description'           => 'nullable|string',
             'base_price'            => 'required|numeric|min:0',
