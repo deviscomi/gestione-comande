@@ -18,12 +18,15 @@
         </include>
     </source>
     <php>
-        <env name="APP_ENV" value="testing"/>
+        <env name="APP_ENV" value="testing" force="true"/>
         <env name="APP_KEY" value="base64:HxlVaGOvP4trgAM2ov0pVLqkQAU6SaFpCz+q/46k+kA="/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="mariadb"/>
-        <env name="DB_DATABASE" value="gestione_comande_test"/>
+        <!-- force="true": il container definisce DB_DATABASE=gestione_comande come
+             variabile d'ambiente reale; senza force PHPUnit non la sovrascrive e la
+             suite (RefreshDatabase → migrate:fresh) azzererebbe il DB di sviluppo. -->
+        <env name="DB_CONNECTION" value="mariadb" force="true"/>
+        <env name="DB_DATABASE" value="gestione_comande_test" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
