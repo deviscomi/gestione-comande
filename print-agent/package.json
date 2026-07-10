@@ -1,0 +1,13 @@
+{
+  "name": "gestione-comande-print-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agente di stampa locale (Raspberry Pi) per Gestione Comande: preleva i job via REST e li inoltra alle stampanti termiche in LAN.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}

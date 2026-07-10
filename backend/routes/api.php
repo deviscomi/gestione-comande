@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\OrderSendController;
 use App\Http\Controllers\Api\V1\PizzaController;
 use App\Http\Controllers\Api\V1\PizzaIngredientController;
 use App\Http\Controllers\Api\V1\PizzaVariantController;
+use App\Http\Controllers\Api\V1\PrintAgentController;
 use App\Http\Controllers\Api\V1\PrintController;
 use App\Http\Controllers\Api\V1\PrinterController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -55,6 +56,15 @@ Route::prefix('v1/kds')->group(function () {
         Route::patch('statuses/{kdsStatus}',      [KdsController::class, 'updateStatus']);
         Route::patch('statuses/{kdsStatus}/call', [KdsController::class, 'call']);
     });
+});
+
+// ── Agente di stampa (Raspberry Pi, modalità PRINT_DRIVER=agent) ────────────
+// Non usa auth:sanctum: è una macchina, si autentica con il token agente
+// (Bearer o X-Agent-Token). Gated dal modulo 'printing'. Vedi docs/REMOTE_PRINTING.md.
+Route::prefix('v1/agent')->middleware(['agent.token', 'module:printing'])->group(function () {
+    Route::get('print-jobs',                [PrintAgentController::class, 'index']);
+    Route::post('print-jobs/{job}/ack',     [PrintAgentController::class, 'ack']);
+    Route::post('test-prints/{token}/ack',  [PrintAgentController::class, 'ackTest']);
 });
 
 Route::prefix('v1')->group(function () {

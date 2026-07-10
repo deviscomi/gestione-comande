@@ -3,6 +3,7 @@
 use App\Http\Middleware\CheckKdsAccess;
 use App\Http\Middleware\CheckModule;
 use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\EnsurePrintAgent;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,9 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
-            'role'     => CheckRole::class,
-            'module'   => CheckModule::class,
-            'kds.auth' => CheckKdsAccess::class,
+            'role'        => CheckRole::class,
+            'module'      => CheckModule::class,
+            'kds.auth'    => CheckKdsAccess::class,
+            'agent.token' => EnsurePrintAgent::class,
         ]);
 
         // Il default del framework reindirizza gli ospiti a route('login')

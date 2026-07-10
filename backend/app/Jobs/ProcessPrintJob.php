@@ -2,11 +2,9 @@
 
 namespace App\Jobs;
 
-use App\Events\OrderPaymentRegistered;
 use App\Events\PrintJobStatusChanged;
 use App\Models\PrintJob;
-use App\Services\EscPosRenderer;
-use App\Services\PdfBackupGenerator;
+use App\Services\PrintCompletionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -23,22 +21,9 @@ class ProcessPrintJob implements ShouldQueue
 
     public function __construct(public int $printJobId) {}
 
-    public function handle(): void
+    public function handle(PrintCompletionService $completion): void
     {
-        $job = PrintJob::with([
-            'order.table.zone',
-            'order.user',
-            'order.items.modifications',
-            'order.items.dish.category',
-            'order.items.pizza',
-            'orderSend.items.modifications',
-            'orderSend.items.dish.category',
-            'orderSend.items.pizza',
-            'orderPayment.allocations.orderItem.dish',
-            'orderPayment.allocations.orderItem.pizza',
-            'orderPayment.allocations.orderItem.wine',
-            'printer',
-        ])->find($this->printJobId);
+        $job = PrintJob::withPrintRelations()->find($this->printJobId);
 
         if (!$job || $job->status === 'done') return;
 
@@ -51,13 +36,12 @@ class ProcessPrintJob implements ShouldQueue
         $job->update(['status' => 'printing', 'attempts' => $job->attempts + 1]);
         broadcast(new PrintJobStatusChanged($job->fresh()));
 
-        $payload = EscPosRenderer::render($job);
+        $payload = $completion->renderPayload($job);
 
         if (strlen($payload) === 0) {
             // Reparto senza articoli di propria competenza in questo invio: nessuna
             // stampa fisica dovuta, non è un errore della stampante.
-            $job->update(['status' => 'done', 'printed_at' => now()]);
-            broadcast(new PrintJobStatusChanged($job->fresh()));
+            $completion->markPrinted($job);
             return;
         }
 
@@ -81,13 +65,7 @@ class ProcessPrintJob implements ShouldQueue
             );
         }
 
-        $job->update(['status' => 'done', 'printed_at' => now()]);
-        broadcast(new PrintJobStatusChanged($job->fresh()));
-
-        if ($job->order_payment_id && $job->orderPayment) {
-            $job->orderPayment->update(['status' => 'printed']);
-            broadcast(new OrderPaymentRegistered($job->order->fresh(), $job->orderPayment->fresh()));
-        }
+        $completion->markPrinted($job);
     }
 
     public function failed(\Throwable $exception): void
@@ -95,8 +73,6 @@ class ProcessPrintJob implements ShouldQueue
         $job = PrintJob::find($this->printJobId);
         if (!$job) return;
 
-        $pdfPath = PdfBackupGenerator::generate($job);
-        $job->update(['status' => 'failed', 'pdf_backup_path' => $pdfPath]);
-        broadcast(new PrintJobStatusChanged($job->fresh()));
+        app(PrintCompletionService::class)->markPermanentlyFailed($job, $exception->getMessage());
     }
 }

@@ -406,7 +406,15 @@ class EscPosRenderer
 
         foreach ($byUscita as $uscitaNum => $uscitaItems) {
             $pizze  = $uscitaItems->where('item_type', 'pizza');
-            $cucina = $uscitaItems->where('item_type', 'dish');
+            // Solo i dish di cucina contano come "CON CUCINA": bevande/dessert/amari
+            // sono dish con category.department nei BAR_DEPARTMENTS e non riguardano la cucina.
+            $cucina = $uscitaItems->filter(function ($item) {
+                if ($item->item_type !== 'dish') {
+                    return false;
+                }
+                $dept = $item->dish?->category?->department ?? 'cucina';
+                return ! in_array($dept, PrintDispatcher::BAR_DEPARTMENTS, true);
+            });
 
             if ($pizze->isEmpty()) continue;
 

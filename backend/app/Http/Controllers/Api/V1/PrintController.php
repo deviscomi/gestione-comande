@@ -38,8 +38,12 @@ class PrintController extends Controller
         if ($job->status === 'done') {
             return response()->json(['message' => 'Job già completato'], 422);
         }
-        $job->update(['status' => 'pending', 'attempts' => 0]);
-        ProcessPrintJob::dispatch($job->id)->onQueue('printing');
+        $job->update(['status' => 'pending', 'attempts' => 0, 'claimed_at' => null]);
+        // Modalità 'agent': il job torna pending e sarà ripreso dal Raspberry.
+        // Modalità 'socket': si ridispatcha subito il worker di stampa.
+        if (config('printing.driver') !== 'agent') {
+            ProcessPrintJob::dispatch($job->id)->onQueue('printing');
+        }
         $this->logActivity('PRINT_RETRY', "Retry print job #{$job->id} ({$job->print_type})", $job->order);
         return response()->json(new PrintJobResource($job->fresh()));
     }

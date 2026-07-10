@@ -23,6 +23,8 @@ class PrintDispatcher
             ->get()
             ->keyBy('department');
 
+        $agentMode = config('printing.driver') === 'agent';
+
         foreach ($printTypes as $type) {
             $job = PrintJob::create([
                 'order_id'      => $order->id,
@@ -34,7 +36,11 @@ class PrintDispatcher
                 'is_reprint'    => false,
             ]);
 
-            ProcessPrintJob::dispatch($job->id)->onQueue('printing');
+            // Modalità 'agent': il job (pending) resta in coda per il Raspberry.
+            // Modalità 'socket': il worker apre subito il socket verso la stampante.
+            if (! $agentMode) {
+                ProcessPrintJob::dispatch($job->id)->onQueue('printing');
+            }
             $jobs->push($job->fresh());
         }
 
@@ -53,7 +59,9 @@ class PrintDispatcher
             'is_reprint'    => true,
         ]);
 
-        ProcessPrintJob::dispatch($newJob->id)->onQueue('printing');
+        if (config('printing.driver') !== 'agent') {
+            ProcessPrintJob::dispatch($newJob->id)->onQueue('printing');
+        }
         return $newJob;
     }
 
@@ -132,11 +140,18 @@ class PrintDispatcher
 
     /**
      * Verifica se un gruppo di articoli (di una singola uscita) contiene
-     * piatti di cucina (non pizze).
+     * piatti di cucina (non pizze). Le bevande/dessert/amari sono dish con
+     * category.department nei BAR_DEPARTMENTS e NON contano come cucina.
      */
     public static function uscitaHasCucina(Collection $uscitaItems): bool
     {
-        return $uscitaItems->flatten(1)->contains(fn($item) => $item->item_type === 'dish');
+        return $uscitaItems->flatten(1)->contains(function ($item) {
+            if ($item->item_type !== 'dish') {
+                return false;
+            }
+            $dept = $item->dish?->category?->department ?? 'cucina';
+            return ! in_array($dept, self::BAR_DEPARTMENTS, true);
+        });
     }
 
     public static function classifyItems(Collection $items): array
