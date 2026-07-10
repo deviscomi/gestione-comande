@@ -140,11 +140,18 @@ class PrintDispatcher
 
     /**
      * Verifica se un gruppo di articoli (di una singola uscita) contiene
-     * piatti di cucina (non pizze).
+     * piatti di cucina (non pizze). Le bevande/dessert/amari sono dish con
+     * category.department nei BAR_DEPARTMENTS e NON contano come cucina.
      */
     public static function uscitaHasCucina(Collection $uscitaItems): bool
     {
-        return $uscitaItems->flatten(1)->contains(fn($item) => $item->item_type === 'dish');
+        return $uscitaItems->flatten(1)->contains(function ($item) {
+            if ($item->item_type !== 'dish') {
+                return false;
+            }
+            $dept = $item->dish?->category?->department ?? 'cucina';
+            return ! in_array($dept, self::BAR_DEPARTMENTS, true);
+        });
     }
 
     public static function classifyItems(Collection $items): array
