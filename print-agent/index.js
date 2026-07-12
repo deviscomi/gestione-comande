@@ -34,6 +34,7 @@ const BASE = (process.env.SERVER_URL || '').replace(/\/+$/, '');
 const TOKEN = process.env.AGENT_TOKEN || '';
 const POLL_MS = Number(process.env.POLL_INTERVAL_MS || 2000);
 const SOCKET_TIMEOUT_MS = Number(process.env.SOCKET_TIMEOUT_MS || 8000);
+const HEARTBEAT_MS = Number(process.env.HEARTBEAT_INTERVAL_MS || 30000);
 
 if (!BASE || !TOKEN) {
   console.error('Configurazione mancante: SERVER_URL e AGENT_TOKEN sono obbligatori (vedi .env.example).');
@@ -41,6 +42,18 @@ if (!BASE || !TOKEN) {
 }
 
 const ts = () => new Date().toISOString();
+const startedAt = Date.now();
+
+// Versione dell'agente (dal package.json), riportata negli heartbeat.
+function readVersion() {
+  try {
+    const dir = path.dirname(fileURLToPath(import.meta.url));
+    return JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).version || null;
+  } catch (e) {
+    return null;
+  }
+}
+const VERSION = readVersion();
 
 // ── HTTP verso l'istanza ────────────────────────────────────────────────────
 function api(pathname, options = {}) {
@@ -86,6 +99,69 @@ function sendToPrinter(host, port, buffer) {
     socket.on('error', (err) => finish(err));
     socket.on('timeout', () => finish(new Error('timeout connessione stampante')));
   });
+}
+
+// ── Ping stampante (solo connessione TCP, senza inviare dati) ───────────────
+function pingPrinter(host, port) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const socket = net.createConnection({ host, port: Number(port) });
+    let settled = false;
+    const done = (reachable) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve({ reachable, latencyMs: reachable ? Date.now() - start : null });
+    };
+    socket.setTimeout(SOCKET_TIMEOUT_MS);
+    socket.on('connect', () => done(true));
+    socket.on('error', () => done(false));
+    socket.on('timeout', () => done(false));
+  });
+}
+
+// ── Heartbeat ────────────────────────────────────────────────────────────────
+// Handshake bidirezionale: l'agente segnala di essere vivo + la raggiungibilità
+// delle stampanti ricevute all'ultimo giro; il server risponde con l'inventario
+// aggiornato delle stampanti attive, che verrà testato al prossimo heartbeat.
+// In modalità agent è l'unico modo per il backoffice di sapere se il Pi è online
+// e se le stampanti sono raggiungibili dalla LAN.
+let printerInventory = [];
+
+async function heartbeatTick() {
+  const printers = [];
+  for (const p of printerInventory) {
+    const r = await pingPrinter(p.ip_address, p.port);
+    printers.push({ id: p.id, reachable: r.reachable, latency_ms: r.latencyMs });
+  }
+
+  let res;
+  try {
+    res = await api('/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        uptime_seconds: Math.floor((Date.now() - startedAt) / 1000),
+        agent_version: VERSION,
+        printers,
+      }),
+    });
+  } catch (e) {
+    console.warn(`[${ts()}] heartbeat non inviato: ${e.message}`);
+    return;
+  }
+
+  if (!res.ok) {
+    console.warn(`[${ts()}] heartbeat HTTP ${res.status}`);
+    return;
+  }
+
+  try {
+    const body = await res.json();
+    printerInventory = Array.isArray(body.printers) ? body.printers : [];
+  } catch (e) {
+    // risposta senza inventario: si mantiene quello precedente
+  }
 }
 
 // ── Ciclo di polling ────────────────────────────────────────────────────────
@@ -148,6 +224,22 @@ async function loop() {
   }
 }
 
-console.log(`[${ts()}] Print agent avviato → ${BASE} (polling ogni ${POLL_MS}ms)`);
+// Heartbeat con lo stesso guard anti-sovrapposizione del polling.
+let hbRunning = false;
+async function heartbeatLoop() {
+  if (hbRunning) return;
+  hbRunning = true;
+  try {
+    await heartbeatTick();
+  } catch (e) {
+    console.error(`[${ts()}] errore heartbeat: ${e.message}`);
+  } finally {
+    hbRunning = false;
+  }
+}
+
+console.log(`[${ts()}] Print agent avviato → ${BASE} (polling ogni ${POLL_MS}ms, heartbeat ogni ${HEARTBEAT_MS}ms)`);
 setInterval(loop, POLL_MS);
 loop();
+setInterval(heartbeatLoop, HEARTBEAT_MS);
+heartbeatLoop();

@@ -20,6 +20,7 @@ export const adminApi = {
   togglePrinter:  (id)   => api.patch(`/printers/${id}/toggle`),
   testPrinter:    (id)   => api.post(`/printers/${id}/test`),
   deletePrinter:  (id)   => api.delete(`/printers/${id}`),
+  getAgentStatus: ()     => api.get('/agent-status'),
 
   // Fiscal devices (Registratore Telematico)
   getFiscalDevices:    (p)    => api.get('/fiscal-devices', { params: p }),

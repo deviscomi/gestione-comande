@@ -3,6 +3,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi } from '../../api/endpoints/admin'
 import { useModule } from '../../hooks/useModule'
 
+function formatUptime(sec) {
+  if (sec == null) return null
+  const d = Math.floor(sec / 86400)
+  const h = Math.floor((sec % 86400) / 3600)
+  const m = Math.floor((sec % 3600) / 60)
+  if (d > 0) return `${d}g ${h}h`
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
+}
+
 export default function Printers() {
   const qc = useQueryClient()
   const [showForm, setShowForm] = useState(false)
@@ -26,6 +36,20 @@ export default function Printers() {
     queryKey: ['failed-jobs'],
     queryFn: () => adminApi.getFailedJobs().then(r => r.data.data),
   })
+
+  // Stato dell'agente di stampa (Raspberry Pi). Presente solo in modalità
+  // PRINT_DRIVER=agent; refetch periodico per riflettere online/offline.
+  const { data: agent } = useQuery({
+    queryKey: ['agent-status'],
+    queryFn: () => adminApi.getAgentStatus().then(r => r.data),
+    refetchInterval: 15000,
+  })
+
+  // Raggiungibilità per stampante riportata dall'agente: { [id]: {reachable, latency_ms} }
+  const agentPrinters = {}
+  if (agent?.applicable && agent?.online) {
+    for (const p of agent.printers ?? []) agentPrinters[p.id] = p
+  }
 
   const createMut  = useMutation({ mutationFn: (d) => adminApi.createPrinter(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['printers'] }); setShowForm(false) } })
   const toggleMut  = useMutation({ mutationFn: (id) => adminApi.togglePrinter(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['printers'] }) })
@@ -55,8 +79,40 @@ export default function Printers() {
         }}>+ Aggiungi stampante</button>
       </div>
 
+      {/* Stato agente di stampa (Raspberry Pi) — solo in modalità agent */}
+      {agent?.applicable && (
+        <div style={{
+          padding: '12px 16px', borderRadius: 10, marginBottom: 16,
+          border: `1px solid ${agent.online ? 'var(--color-border-success)' : 'var(--color-border-danger)'}`,
+          background: agent.online ? 'var(--color-background-success)' : 'var(--color-background-danger)',
+          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap'
+        }}>
+          <span style={{
+            width: 10, height: 10, borderRadius: '50%',
+            background: agent.online ? 'var(--color-text-success)' : 'var(--color-text-danger)'
+          }} />
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: agent.online ? 'var(--color-text-success)' : 'var(--color-text-danger)' }}>
+              Agente di stampa (Raspberry Pi) — {agent.online ? 'online' : 'offline'}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
+              {agent.online ? (
+                <>
+                  {agent.last_seen_at && <>visto {new Date(agent.last_seen_at).toLocaleTimeString()}</>}
+                  {formatUptime(agent.uptime_seconds) && <> · attivo da {formatUptime(agent.uptime_seconds)}</>}
+                  {agent.agent_version && <> · v{agent.agent_version}</>}
+                </>
+              ) : (
+                <>Nessun heartbeat recente — il Raspberry potrebbe essere spento o senza rete.</>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {printers?.map(p => {
         const res = testResult[p.id]
+        const reach = agentPrinters[p.id]
         return (
           <div key={p.id} style={{
             padding: '14px 16px', borderRadius: 10, marginBottom: 10,
@@ -69,6 +125,13 @@ export default function Printers() {
               <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
                 <span style={{ color: DEPT_COLOR[p.department], fontWeight: 600 }}>{p.department}</span>
                 {' · '}{p.ip_address}:{p.port}
+                {reach && (
+                  <span style={{ color: reach.reachable ? 'var(--color-text-success)' : 'var(--color-text-danger)', fontWeight: 600 }}>
+                    {' · '}{reach.reachable
+                      ? `raggiungibile${reach.latency_ms != null ? ` (${reach.latency_ms}ms)` : ''}`
+                      : 'non raggiungibile'}
+                  </span>
+                )}
               </div>
               {res && <div style={{ fontSize: 11, marginTop: 3, color: res.ok ? 'var(--color-text-success)' : 'var(--color-text-danger)' }}>{res.msg}</div>}
             </div>

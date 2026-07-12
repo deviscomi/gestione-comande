@@ -26,6 +26,15 @@ Ogni ~2 secondi:
    Se fallisce, il server ritenta e dopo N tentativi genera il PDF di backup e
    segnala l'errore nel backoffice.
 
+Inoltre, ogni `HEARTBEAT_INTERVAL_MS` (default 30s):
+
+4. `POST /api/v1/agent/heartbeat` con uptime, versione agente e raggiungibilità
+   delle stampanti (testate dalla LAN). Il server risponde con l'inventario
+   aggiornato delle stampanti attive, testato al giro successivo. Il backoffice
+   (Stampanti) mostra così se il Pi è **online/offline** e se ogni stampante è
+   raggiungibile — l'unico modo, in modalità agent, dato che il server non può
+   raggiungere gli IP privati della LAN.
+
 ## Prerequisiti
 
 - Lato **server**: l'istanza del ristorante deve avere `PRINT_DRIVER=agent` e un
@@ -72,6 +81,7 @@ journalctl -u print-agent -f
 | `AGENT_TOKEN` | Deve coincidere con `PRINT_AGENT_TOKEN` del server | — (obbligatorio) |
 | `POLL_INTERVAL_MS` | Intervallo di polling | `2000` |
 | `SOCKET_TIMEOUT_MS` | Timeout connessione alla stampante | `8000` |
+| `HEARTBEAT_INTERVAL_MS` | Intervallo dell'heartbeat di stato | `30000` |
 
 ## Diagnostica
 
