@@ -65,6 +65,7 @@ Route::prefix('v1/agent')->middleware(['agent.token', 'module:printing'])->group
     Route::get('print-jobs',                [PrintAgentController::class, 'index']);
     Route::post('print-jobs/{job}/ack',     [PrintAgentController::class, 'ack']);
     Route::post('test-prints/{token}/ack',  [PrintAgentController::class, 'ackTest']);
+    Route::post('heartbeat',                [PrintAgentController::class, 'heartbeat']);
 });
 
 Route::prefix('v1')->group(function () {
@@ -211,6 +212,10 @@ Route::prefix('v1')->group(function () {
 
             // Stampanti — sola lettura (serve a Reports.jsx per "Stampa Cassa")
             Route::apiResource('printers', PrinterController::class)->only(['index', 'show'])
+                ->middleware('module:printing');
+
+            // Stato agente di stampa (Raspberry Pi) — monitoraggio backoffice
+            Route::get('agent-status', [PrintAgentController::class, 'status'])
                 ->middleware('module:printing');
 
             // Storico scontrini fiscali

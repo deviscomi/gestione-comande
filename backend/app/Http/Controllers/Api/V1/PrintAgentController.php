@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\PrintJob;
+use App\Models\Printer;
 use App\Services\PrintCompletionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,9 @@ use Illuminate\Support\Facades\Cache;
  */
 class PrintAgentController extends Controller
 {
+    /** Chiave cache dello stato heartbeat dell'agente. */
+    private const HEARTBEAT_KEY = 'print_agent:heartbeat';
+
     public function __construct(private PrintCompletionService $completion) {}
 
     /**
@@ -118,5 +122,84 @@ class PrintAgentController extends Controller
         Cache::put('print_agent:tests', $tests, now()->addMinutes(5));
 
         return response()->json(['status' => 'ok']);
+    }
+
+    /**
+     * POST /agent/heartbeat
+     * L'agente segnala di essere vivo e riporta la raggiungibilità delle
+     * stampanti testate dalla LAN. Lo stato è tenuto in cache con TTL: se scade
+     * senza nuovi heartbeat, il backoffice considera il Pi offline.
+     *
+     * Body: {
+     *   uptime_seconds?: int,
+     *   agent_version?: string,
+     *   printers?: [{ id: int, reachable: bool, latency_ms?: int }]
+     * }
+     *
+     * Risponde con l'inventario delle stampanti attive: l'agente le testerà e
+     * ne riporterà l'esito al prossimo heartbeat (handshake bidirezionale — in
+     * modalità agent il server non può raggiungere gli IP privati della LAN).
+     */
+    public function heartbeat(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'uptime_seconds'        => 'nullable|integer|min:0',
+            'agent_version'         => 'nullable|string|max:50',
+            'printers'              => 'nullable|array',
+            'printers.*.id'         => 'required_with:printers|integer',
+            'printers.*.reachable'  => 'required_with:printers|boolean',
+            'printers.*.latency_ms' => 'nullable|integer|min:0',
+        ]);
+
+        $ttl = (int) config('printing.agent_heartbeat_ttl', 90);
+        Cache::put(self::HEARTBEAT_KEY, [
+            'last_seen_at'   => now()->toIso8601String(),
+            'uptime_seconds' => $data['uptime_seconds'] ?? null,
+            'agent_version'  => $data['agent_version'] ?? null,
+            'printers'       => $data['printers'] ?? [],
+        ], now()->addSeconds($ttl));
+
+        $inventory = Printer::query()
+            ->where('is_active', true)
+            ->orderBy('department')
+            ->get(['id', 'name', 'department', 'ip_address', 'port'])
+            ->map(fn (Printer $p) => [
+                'id'         => $p->id,
+                'name'       => $p->name,
+                'department' => $p->department,
+                'ip_address' => $p->ip_address,
+                'port'       => $p->port,
+            ])
+            ->all();
+
+        return response()->json(['ok' => true, 'printers' => $inventory]);
+    }
+
+    /**
+     * GET /agent-status (backoffice: admin/cashier)
+     * Stato corrente dell'agente per il monitoraggio nel backoffice. Online se
+     * è presente un heartbeat non ancora scaduto. In modalità 'socket' (nessun
+     * Pi) restituisce applicable=false così il pannello resta nascosto.
+     */
+    public function status(): JsonResponse
+    {
+        if (config('printing.driver') !== 'agent') {
+            return response()->json([
+                'applicable' => false,
+                'driver'     => config('printing.driver'),
+            ]);
+        }
+
+        $hb = Cache::get(self::HEARTBEAT_KEY);
+
+        return response()->json([
+            'applicable'     => true,
+            'driver'         => 'agent',
+            'online'         => $hb !== null,
+            'last_seen_at'   => $hb['last_seen_at'] ?? null,
+            'uptime_seconds' => $hb['uptime_seconds'] ?? null,
+            'agent_version'  => $hb['agent_version'] ?? null,
+            'printers'       => $hb['printers'] ?? [],
+        ]);
     }
 }

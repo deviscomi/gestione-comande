@@ -58,4 +58,16 @@ return [
     */
     'max_attempts' => (int) env('PRINT_MAX_ATTEMPTS', 5),
 
+    /*
+    |--------------------------------------------------------------------------
+    | TTL dell'heartbeat dell'agente (secondi)
+    |--------------------------------------------------------------------------
+    | L'agente invia un heartbeat periodico (POST /agent/heartbeat) con stato e
+    | raggiungibilità delle stampanti. Lo stato viene tenuto in cache per questo
+    | tempo: se scade senza nuovi heartbeat, il backoffice considera il Pi
+    | offline. Va impostato a qualche volta l'intervallo di heartbeat dell'agente
+    | (default agente 30s ⇒ 90s tollera un beat perso).
+    */
+    'agent_heartbeat_ttl' => (int) env('PRINT_AGENT_HEARTBEAT_TTL', 90),
+
 ];
