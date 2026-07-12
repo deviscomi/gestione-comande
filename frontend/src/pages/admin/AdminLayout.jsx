@@ -16,6 +16,7 @@ const NAV = [
   { to: '/admin/tables',    icon: '🪑',  label: 'Tavoli & zone',             cashier: true },
   { to: '/admin/waiters',   icon: '👤',  label: 'Camerieri',      module: 'advanced_backoffice' },
   { to: '/admin/printers',  icon: '🖨',  label: 'Stampanti',  module: 'printing' },
+  { to: '/admin/kds',       icon: '🖥',  label: 'KDS',            module: 'kds' },
   { to: '/admin/fiscal-devices', icon: '🧾', label: 'Registratori RT', module: 'fiscal' },
   { to: '/admin/fiscal-receipts', icon: '📄', label: 'Scontrini fiscali', module: 'fiscal', cashier: true },
   { to: '/admin/schedule',  icon: '📅',  label: 'Calendario',               cashier: true },

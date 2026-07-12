@@ -30,6 +30,7 @@ import DailyClosure from './pages/admin/DailyClosure'
 import Settings from './pages/admin/Settings'
 import ImportExport from './pages/admin/ImportExport'
 import ActivityLogs from './pages/admin/ActivityLogs'
+import KdsHelp from './pages/admin/KdsHelp'
 import KdsGate from './pages/kds/KdsGate'
 import CashierDashboard from './pages/cashier/CashierDashboard'
 import CashierTableView from './pages/cashier/CashierTableView'
@@ -175,6 +176,10 @@ export default function App() {
           <Route path="logs"     element={
             <ModuleGate slug="advanced_backoffice" fallback={<ModuloDisattivato nome="Backoffice avanzato" />}>
               <AdminOnlyRoute><ActivityLogs /></AdminOnlyRoute>
+            </ModuleGate>} />
+          <Route path="kds"      element={
+            <ModuleGate slug="kds" fallback={<ModuloDisattivato nome="KDS" />}>
+              <AdminOnlyRoute><KdsHelp /></AdminOnlyRoute>
             </ModuleGate>} />
           <Route path="licenza"  element={<AdminOnlyRoute><Licenza /></AdminOnlyRoute>} />
         </Route>
