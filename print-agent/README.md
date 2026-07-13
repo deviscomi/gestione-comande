@@ -82,6 +82,7 @@ journalctl -u print-agent -f
 | `POLL_INTERVAL_MS` | Intervallo di polling | `2000` |
 | `SOCKET_TIMEOUT_MS` | Timeout connessione alla stampante | `8000` |
 | `HEARTBEAT_INTERVAL_MS` | Intervallo dell'heartbeat di stato | `30000` |
+| `HTTP_TIMEOUT_MS` | Timeout per le chiamate HTTP verso il server | `10000` |
 
 ## Diagnostica
 

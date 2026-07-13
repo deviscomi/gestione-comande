@@ -35,6 +35,7 @@ const TOKEN = process.env.AGENT_TOKEN || '';
 const POLL_MS = Number(process.env.POLL_INTERVAL_MS || 2000);
 const SOCKET_TIMEOUT_MS = Number(process.env.SOCKET_TIMEOUT_MS || 8000);
 const HEARTBEAT_MS = Number(process.env.HEARTBEAT_INTERVAL_MS || 30000);
+const HTTP_TIMEOUT_MS = Number(process.env.HTTP_TIMEOUT_MS || 10000);
 
 if (!BASE || !TOKEN) {
   console.error('Configurazione mancante: SERVER_URL e AGENT_TOKEN sono obbligatori (vedi .env.example).');
@@ -56,9 +57,13 @@ function readVersion() {
 const VERSION = readVersion();
 
 // ── HTTP verso l'istanza ────────────────────────────────────────────────────
+// AbortSignal.timeout: senza un timeout esplicito, un fetch che resta appeso
+// (bug di rete/TLS, non un errore pulito) blocca il ciclo per sempre invece
+// di fallire e riprovare al giro successivo.
 function api(pathname, options = {}) {
   return fetch(`${BASE}/api/v1/agent${pathname}`, {
     ...options,
+    signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
     headers: {
       Authorization: `Bearer ${TOKEN}`,
       Accept: 'application/json',
